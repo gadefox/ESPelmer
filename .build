@@ -2,5 +2,4 @@
 
 dir = `{ pwd }
 mkdir -p $dir/out
-
-arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2 --output-dir $dir/out $dir
+arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2 --output-dir $dir/out $dir/src
