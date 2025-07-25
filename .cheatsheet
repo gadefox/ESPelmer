@@ -1,6 +1,8 @@
-copy tp ~/.arduino15/packages/esp8266/hardware/esp8266/3.1.2/libraries/
+copy -> ~/.arduino15/user/libraries
 ----
 https://github.com/me-no-dev/ESPAsyncWebServer
 https://github.com/me-no-dev/ESPAsyncTCP
 
+android:
+-------
 ESP OTA Tool
