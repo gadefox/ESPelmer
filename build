@@ -1,5 +1,4 @@
 #!/bin/rc
 
 dir = `{ pwd }
-mkdir -p $dir/out
-arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2 --output-dir $dir/out $dir/src
+arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2 $dir/src
