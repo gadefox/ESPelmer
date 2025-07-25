@@ -7,6 +7,11 @@
 // Global implementation
 const char _sensorlog_name[] = "/sensor.bin";
 
+struct LogEntry {                                                                                                                                                             
+  uint16_t offset;                                                                                                                                                            
+  uint16_t pulses;                                                                                                                                                            
+}
+
 // Constructor takes sensor pin and pointer to Event
 Sensor::Sensor(uint8_t pin, uint16_t millisInterval, uint16_t intervalSec)
     : Debouncer(pin, millisInterval)
