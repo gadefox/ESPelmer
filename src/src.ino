@@ -7,7 +7,7 @@
 
 ColorLED _led(D1, D2, D5);
 Sensor _sensor(D6, 15, 30);
-WiFiManager _wifi("elmer", "1", 10, 30, 15);  // 10:30-10:45
+WiFiManager _wifi("elmer", "1", 12, 00, 20);  // 12:00-12:20
 
 void setup()
 {

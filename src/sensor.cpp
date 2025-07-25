@@ -2,15 +2,9 @@
 #include <LittleFS.h>
 
 #include "sensor.h"
-#include "log.h"
 
 // Global implementation
-const char _sensorlog_name[] = "/sensor.bin";
-
-struct LogEntry {                                                                                                                                                             
-  uint16_t offset;                                                                                                                                                            
-  uint16_t pulses;                                                                                                                                                            
-}
+const char _sensorlog_path[] = "/sensor.bin";
 
 // Constructor takes sensor pin and pointer to Event
 Sensor::Sensor(uint8_t pin, uint16_t millisInterval, uint16_t intervalSec)
@@ -23,6 +17,9 @@ Sensor::Sensor(uint8_t pin, uint16_t millisInterval, uint16_t intervalSec)
 
 Sensor::~Sensor()
 {
+  if (_maxEntries > 0)
+      writeLogEntryBuffer(_maxEntries);
+
   if (_logFile)
     _logFile.close();
 }
@@ -37,47 +34,61 @@ void Sensor::begin(int pinMode)
 
 void Sensor::createLogFile()
 {
-  _logFile = LittleFS.open(_sensorlog_name, "a");
+  _logFile = LittleFS.open(_sensorlog_path, "a");
   if (!_logFile)
     _events.log(EventLog::ERROR, "Failed to open log file");
 }
 
 void Sensor::emptyLogFile()
 {
-  LittleFS.remove(_sensorlog_name);
+  LittleFS.remove(_sensorlog_path);
   createLogFile();
+}
+
+void Sensor::writeLogEntryBuffer(size_t count)
+{
+    size_t written = _logFile.write((const uint8_t*)_entries, sizeof(LogEntry) * count);
+    if (written != sizeof(LogEntry) * count)
+      _events.log(EventLog::ERROR, "Failed to write log buffer");
+
+    _logFile.flush();
+    _maxEntries = 0;
 }
 
 void Sensor::resetTimestamp(time_t currentTime)
 {
-    uint16_t delimiter = UINT16_MAX;
+    SegmentMarker marker { UINT16_MAX, currentTime };
 
     _startTime = currentTime;
     _lastOffset = 0;
 
-    // Write delimiter
-    _logFile.write((const uint8_t*)&delimiter, sizeof(uint16_t));
-    
-    // Write startTime as binary at start of file (4 or 8 bytes)
-    _logFile.write((const uint8_t*)&currentTime, sizeof(time_t));
+    if (_maxEntries > 0) {
+        writeLogEntryBuffer(_maxEntries);
+        _maxEntries = 0;
+    }
+
+    // Write delimiter and startTime as binary at start of file (4 or 8 bytes)
+    _logFile.write((const uint8_t*)&marker, sizeof(SegmentMarker));
     _logFile.flush();
+
+    _events.log(EventLog::INFO, "Sensor: reset timestamp at %lu", currentTime);
 }
 
-void Sensor::writeLogEntry(uint16_t offset)
+void Sensor::saveLogEntry(uint16_t offset)
 {
     uint16_t count;
-    LogEntry entry;
 
-    entry.offset = offset;
+    _entries[_maxEntries].offset = offset;
     _lastOffset = offset;
 
     noInterrupts();
-    entry.pulses = _pulseCount;
+    _entries[_maxEntries].pulses = _pulseCount;
     _pulseCount = 0;
     interrupts();
 
     // Log info
-    _logFile.write((const uint8_t*)&entry, sizeof(LogEntry));
+    if (++_maxEntries == BUFFER_SIZE)
+        writeLogEntryBuffer(BUFFER_SIZE);
 }
 
 void Sensor::update()
@@ -109,5 +120,5 @@ void Sensor::update(time_t currentTime)
       // offset is now 0
     }
 
-    writeLogEntry(offset);
+    saveLogEntry(offset);
 }

@@ -3,6 +3,18 @@
 #include <debouncer.h>
 #include <FS.h>
 
+#define BUFFER_SIZE  1024
+
+struct SegmentMarker {
+  uint16_t delimiter;
+  time_t timestamp;
+};
+
+struct LogEntry {
+  uint16_t offset;
+  uint16_t pulses;
+};
+
 class Sensor : Debouncer
 {
 private:
@@ -12,6 +24,9 @@ private:
   volatile uint16_t _pulseCount;
 
   File _logFile;
+
+  LogEntry _entries[BUFFER_SIZE];
+  size_t _maxEntries;
 
 public:
   Sensor(uint8_t pin, uint16_t millisInterval, uint16_t intervalSec);
@@ -28,10 +43,11 @@ private:
   void createLogFile();
 
   void resetTimestamp(time_t currentTime);
-  void writeLogEntry(uint16_t offset);
+  void saveLogEntry(uint16_t offset);
+  void writeLogEntryBuffer(size_t count);
 
   inline uint32_t calcOffset(time_t currentTime);
 };
 
-extern const char _sensorlog_name[];
+extern const char _sensorlog_path[];
 

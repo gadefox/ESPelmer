@@ -35,12 +35,16 @@ public:
   void log(Level level, const char* format, ...);
 
 private:
-  const char* levelToString(Level level);
-  void logInternal(Level level, const char* message);
+  const char levelToChar(Level level);
+  void writeMessage(Level level, const char* message);
+  void writeHeader(uint8_t day, uint8_t month, uint8_t year);
 
   File _logFile;
+  uint8_t _day;
+  uint8_t _month;
+  uint8_t _year;
 };
 
 extern EventLog _events;
-extern const char _eventlog_name[];
+extern const char _eventlog_path[];
 

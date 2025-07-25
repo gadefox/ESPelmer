@@ -23,10 +23,15 @@
 
 // Global implementation
 EventLog _events;
-const char _eventlog_name[] = "/events.log";
+const char _eventlog_path[] = "/events.log";
+const char _monthAbbreviations[12][4] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
+// Class implementation
 EventLog::EventLog()
 {
+  _day = 0;
+  _month = UINT8_MAX;
+  _year = 0;
 }
 
 EventLog::~EventLog()
@@ -38,28 +43,54 @@ EventLog::~EventLog()
 // Open log file in append mode
 bool EventLog::begin()
 {
-    _logFile = LittleFS.open(_eventlog_name, "a");
-    return _logFile;
+    time_t now = time(nullptr);
+    struct tm *t = localtime(&now);
+
+    _logFile = LittleFS.open(_eventlog_path, "a");
+    if (!_logFile)
+      return false;
+
+    writeHeader(t->tm_mday, t->tm_mon, t->tm_year);
+    _logFile.flush();
+    return true;
 }
 
 // Convert enum Level to string without default case
-const char* EventLog::levelToString(Level level)
+const char EventLog::levelToChar(Level level)
 {
-    if (level == INFO)
-      return "INFO";
+    if (level == ERROR)
+      return 'E';
     if (level == WARN)
-      return "WARN";
-    return "ERROR";
+      return 'W';
+    return 'I';
+}
+
+void EventLog::writeHeader(uint8_t day, uint8_t month, uint8_t year)
+{
+    if (_year != year) {
+      _year = year;
+      _logFile.printf("%d\n", year + 1900);
+    }
+
+    if (_month != month) {
+      _month = month;
+      _logFile.printf("%s\n", _monthAbbreviations[month]);
+    }
+
+    if (_day != day) {
+      _day = day;
+      _logFile.printf("%02d\n", day);
+    }
 }
 
 // Log a message with level and timestamp
-void EventLog::logInternal(Level level, const char* message)
+void EventLog::writeMessage(Level level, const char* message)
 {
     time_t now = time(nullptr);
     struct tm *t = localtime(&now);
 
-    _logFile.printf("[%04d-%02d-%02d %02d:%02d:%02d] %s: %s\n", 
-       t->tm_year + 1900, t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, levelToString(level), message);
+    writeHeader(t->tm_mday, t->tm_mon, t->tm_year);
+    _logFile.printf("%c %02d%02d%02d %s\n", levelToChar(level), t->tm_hour, t->tm_min, t->tm_sec, message);
     _logFile.flush();
 }
 
@@ -73,12 +104,16 @@ void EventLog::log(Level level, const char* format, ...)
   va_end(args);
 
   // Call original log method with formatted string
-  logInternal(level, buffer);
+  writeMessage(level, buffer);
 }
 
 bool EventLog::emptyLogFile()
 {
-  LittleFS.remove(_eventlog_name);
+  _day = 0;
+  _month = UINT8_MAX;
+  _year = 0;
+
+  LittleFS.remove(_eventlog_path);
   return begin();
 }
 
