@@ -1,0 +1,8 @@
+copy -> ~/.arduino15/user/libraries
+----
+https://github.com/me-no-dev/ESPAsyncWebServer
+https://github.com/me-no-dev/ESPAsyncTCP
+
+android:
+-------
+ESP OTA Tool
