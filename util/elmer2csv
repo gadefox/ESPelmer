@@ -1,0 +1,62 @@
+#!/bin/python3
+
+import struct
+import sys
+from influxdb_client import InfluxDBClient, Point, WritePrecision
+
+def parse_log(filename):
+    with open(filename, "rb") as f:
+        data = f.read()
+
+    pos = 0
+    result = []
+
+    while pos + 4 <= len(data):
+        timestamp, = struct.unpack_from("<I", data, pos)
+        pos += 4
+        if timestamp == 0xFFFFFFFF:
+            break
+
+        while pos + 4 <= len(data):
+            offset, count = struct.unpack_from("<HH", data, pos)
+            pos += 4
+            if offset == 0xFFFF and count == 0xFFFF:
+                break
+            time_point = timestamp + offset * 30
+            result.append((time_point, count))
+
+    return result
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python elmer2csv <sensor.bin>")
+        sys.exit(1)
+
+    logfile = sys.argv[1]
+    log = parse_log(logfile)
+
+    url = "http://localhost:8086"
+    token = "tvoj_token"
+    org = "tvoja_organizacia"
+    bucket = "tvoj_bucket"
+
+    client = InfluxDBClient(url=url, token=token, org=org)
+    write_api = client.write_api()
+
+    for ts, count in log:
+        point = Point("electricity")\
+            .tag("source", "meter")\
+            .field("impulses", count)\
+            .time(ts, WritePrecision.S)
+
+        write_api.write(bucket=bucket, org=org, record=point)
+
+    print(f"Imported {len(log)} points to InfluxDB")
+
+    outname = logfile.rsplit('.', 1)[0] + ".csv"
+    with open(outname, "w") as out:
+        out.write("timestamp,count\n")
+        for ts, count in log:
+            out.write(f"{ts},{count}\n")
+
+    print(f"Output saved to {outname}")
